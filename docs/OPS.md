@@ -26,6 +26,16 @@ powershell -File E:\MyWorkspace\machine-sentinel\scripts\start-ui.ps1
 
 Stop: Ctrl+C in the start shells. Do **not** kill unrelated Cursor shells that may parent protected ingest wrappers (INC-06).
 
+## Soak (DEV 0.1)
+
+See [`SOAK-0.1.md`](./SOAK-0.1.md). Started 2026-07-17 IST. Sample anytime:
+
+```powershell
+powershell -File E:\MyWorkspace\machine-sentinel\scripts\check-soak.ps1
+```
+
+Fleet `probes_down>0` for unused reserved ports is expected and not a soak failure.
+
 ## CSS
 
 `clientId=machine-sentinel` **active** on CSS DEV `:9000`.
