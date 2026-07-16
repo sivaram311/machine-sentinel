@@ -12,7 +12,8 @@ public record SentinelProperties(
         Probe probe,
         Abandon abandon,
         Backup backup,
-        Actions actions
+        Actions actions,
+        Security security
 ) {
     public record MyAgent(String root) {}
     public record Ports(String registryJson) {}
@@ -22,4 +23,5 @@ public record SentinelProperties(
     public record Abandon(int idleMinutes, List<String> terminalDirs) {}
     public record Backup(List<String> roots, int warnAfterDays, int critAfterDays, int maxPacks) {}
     public record Actions(boolean autoKillEnabled) {}
+    public record Security(boolean enabled, String clientId, String jwkSetUri, List<String> corsOrigins) {}
 }

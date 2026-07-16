@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Machine Sentinel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg0: #0f1419;
+      --bg1: #1a222c;
+      --ink: #e7eef6;
+      --muted: #8fa3b8;
+      --ok: #3dba7c;
+      --warn: #e0a145;
+      --crit: #e35d6a;
+      --line: #2a3644;
+      --accent: #4f9cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1c3348 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #24301f 0%, transparent 50%),
+        var(--bg0);
+    }
+    header {
+      padding: 1.25rem 1.5rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.55rem;
+      letter-spacing: 0.02em;
+    }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.95rem; }
+    main { padding: 1rem 1.5rem 2rem; display: grid; gap: 1rem; }
+    .row { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    section {
+      background: color-mix(in srgb, var(--bg1) 92%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .login {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end;
+    }
+    label { display: grid; gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
+    input {
+      background: #0c1117; border: 1px solid var(--line); color: var(--ink);
+      border-radius: 6px; padding: 0.45rem 0.6rem; min-width: 10rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    button {
+      background: var(--accent); color: #041018; border: 0; border-radius: 6px;
+      padding: 0.5rem 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .pill {
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+      font-family: "IBM Plex Mono", monospace; font-size: 0.8rem;
+      border: 1px solid var(--line);
+    }
+    .OK, .UP { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+    .WARN, .degraded { color: #e0a145; border-color: color-mix(in srgb, #e0a145 40%, var(--line)); }
+    .CRIT, .DOWN, .down { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 40%, var(--line)); }
+    pre {
+      margin: 0; white-space: pre-wrap; word-break: break-word;
+      font-family: "IBM Plex Mono", monospace; font-size: 0.78rem;
+      color: #c5d4e4; max-height: 280px; overflow: auto;
+    }
+    .err { color: var(--crit); font-size: 0.9rem; }
+    .meta { color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Machine Sentinel</h1>
+    <p>Observe → classify → ledger. CSS login required for ops APIs.</p>
+  </header>
+  <main>
+    <section>
+      <h2>Session</h2>
+      <div class="login">
+        <label>CSS user<input id="user" value="admin" autocomplete="username" /></label>
+        <label>Password<input id="pass" type="password" autocomplete="current-password" /></label>
+        <button id="loginBtn" type="button">Sign in</button>
+        <button id="refreshBtn" class="secondary" type="button">Refresh</button>
+        <button id="logoutBtn" class="secondary" type="button">Sign out</button>
+      </div>
+      <p class="meta" id="sessionMeta">Not signed in</p>
+      <p class="err" id="err" hidden></p>
+    </section>
+
+    <div class="row">
+      <section>
+        <h2>Health</h2>
+        <div id="health" class="meta">…</div>
+      </section>
+      <section>
+        <h2>Ops status</h2>
+        <div id="ops" class="meta">Sign in to load</div>
+      </section>
+      <section>
+        <h2>PG pressure</h2>
+        <div id="pg" class="meta">Sign in to load</div>
+      </section>
+      <section>
+        <h2>Backup freshness</h2>
+        <div id="bak" class="meta">Sign in to load</div>
+      </section>
+    </div>
+
+    <div class="row">
+      <section>
+        <h2>Abandon candidates</h2>
+        <pre id="abandon">Sign in to load</pre>
+      </section>
+      <section>
+        <h2>Recent events</h2>
+        <pre id="events">Sign in to load</pre>
+      </section>
+    </div>
+  </main>
+  <script>
+    const API = localStorage.getItem('ms.api') || 'http://127.0.0.1:3350/api';
+    const CSS = localStorage.getItem('ms.css') || 'http://127.0.0.1:9000';
+    const CLIENT = 'machine-sentinel';
+    const TOKEN_KEY = 'ms.token';
+
+    const $ = (id) => document.getElementById(id);
+    const token = () => localStorage.getItem(TOKEN_KEY);
+
+    function showErr(msg) {
+      const el = $('err');
+      if (!msg) { el.hidden = true; el.textContent = ''; return; }
+      el.hidden = false; el.textContent = msg;
+    }
+
+    async function cssLogin() {
+      showErr('');
+      const body = {
+        username: $('user').value.trim(),
+        password: $('pass').value,
+        clientId: CLIENT
+      };
+      const res = await fetch(CSS + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('CSS login failed: HTTP ' + res.status);
+      const data = await res.json();
+      const access = data.access_token || data.accessToken;
+      if (!access) throw new Error('No access token in CSS response');
+      localStorage.setItem(TOKEN_KEY, access);
+      $('pass').value = '';
+      $('sessionMeta').textContent = 'Signed in as ' + body.username + ' · clientId=' + CLIENT;
+      await refreshAll();
+    }
+
+    async function apiGet(path) {
+      const headers = {};
+      const t = token();
+      if (t) headers['Authorization'] = 'Bearer ' + t;
+      const res = await fetch(API + path, { headers });
+      if (res.status === 401) throw new Error('Unauthorized — sign in again');
+      if (!res.ok) throw new Error(path + ' → HTTP ' + res.status);
+      return res.json();
+    }
+
+    function pill(level) {
+      const l = String(level || '—');
+      return '<span class="pill ' + l + '">' + l + '</span>';
+    }
+
+    async function refreshAll() {
+      showErr('');
+      try {
+        const health = await apiGet('/health');
+        $('health').innerHTML = pill(health.status) + ' · ' + (health.mode || '');
+      } catch (e) {
+        $('health').textContent = e.message;
+      }
+
+      if (!token()) {
+        $('sessionMeta').textContent = 'Not signed in';
+        return;
+      }
+
+      try {
+        const [ops, pg, bak, abandon, events] = await Promise.all([
+          apiGet('/ops/status'),
+          apiGet('/pg/pressure'),
+          apiGet('/backups/freshness'),
+          apiGet('/abandon/candidates'),
+          apiGet('/events')
+        ]);
+        $('ops').innerHTML =
+          'probes ok ' + ops.probes_ok + ' / down ' + ops.probes_down +
+          ' · backup ' + pill(ops.backup_overall_level);
+        $('pg').innerHTML = pill(pg.level) + ' · app_conns=' + (pg.app_conns ?? '—') +
+          ' / max=' + (pg.max_connections ?? '—');
+        $('bak').innerHTML = pill(bak.overall_level) + ' · newest age_h=' + (bak.newest_age_hours ?? '—') +
+          ' · stale warn/crit ' + bak.stale_warn_count + '/' + bak.stale_crit_count;
+        $('abandon').textContent = JSON.stringify({
+          scanned: abandon.scanned,
+          candidates: abandon.candidate_count,
+          protected: abandon.protected_count,
+          noise: abandon.noise_count,
+          sample: (abandon.candidates || []).slice(0, 5)
+        }, null, 2);
+        $('events').textContent = JSON.stringify((events || []).slice(0, 12).map(e => ({
+          at: e.occurred_at, cat: e.category, sev: e.severity, summary: e.summary
+        })), null, 2);
+      } catch (e) {
+        showErr(e.message);
+      }
+    }
+
+    $('loginBtn').onclick = () => cssLogin().catch(e => showErr(e.message));
+    $('refreshBtn').onclick = () => refreshAll().catch(e => showErr(e.message));
+    $('logoutBtn').onclick = () => {
+      localStorage.removeItem(TOKEN_KEY);
+      $('sessionMeta').textContent = 'Not signed in';
+      refreshAll();
+    };
+
+    if (token()) {
+      $('sessionMeta').textContent = 'Token present · clientId=' + CLIENT;
+    }
+    refreshAll();
+  </script>
+</body>
+</html>

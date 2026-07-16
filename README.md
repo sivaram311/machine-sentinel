@@ -7,9 +7,10 @@ Composes MyAgent SoTs — does **not** replace ports/DB/CSS/activity registries 
 |--|--|
 | App id | `machine-sentinel` |
 | Backend | Spring Boot 3.3 (Java 21) |
-| DEV API | `:3350` |
+| DEV API | `:3350` (CSS JWKS; `/api/health` public) |
+| DEV UI | `:3351` thin ops console |
 | DB | `app_machine_sentinel` / schema `dev` |
-| CSS | `clientId=machine-sentinel` (planned; observe APIs open in v0.1) |
+| CSS | `clientId=machine-sentinel` **active** |
 | Mode | **observe-only** — no auto-kill (INC-06) |
 
 ## Decision
@@ -21,18 +22,12 @@ Agy CLI returned meta-docs (fail). **Grok GO** is authoritative:
 
 ```powershell
 powershell -File E:\MyWorkspace\machine-sentinel\scripts\start-dev.ps1
+powershell -File E:\MyWorkspace\machine-sentinel\scripts\start-ui.ps1
 ```
 
-Smoke:
-
-- `GET http://127.0.0.1:3350/api/health`
-- `GET http://127.0.0.1:3350/api/inventory` — reads MyAgent port/DB JSON registries
-- `GET http://127.0.0.1:3350/api/probes` — live listener + known health paths
-- `GET http://127.0.0.1:3350/api/pg/pressure` — last line of MyAgent `pg-connections.log`
-- `POST http://127.0.0.1:3350/api/pg/pressure/refresh` — runs existing `check-pg-connections.ps1`
-- `GET http://127.0.0.1:3350/api/abandon/candidates` — registry-aware classifier (alive PID ≠ abandon; no kills)
-- `GET http://127.0.0.1:3350/api/backups/freshness` — `H:/releases` age rules (WARN 7d / CRIT 14d)
-- `GET http://127.0.0.1:3350/api/events` — ledger rows
+- UI: http://127.0.0.1:3351/ (CSS `admin` login → Bearer to API)
+- `GET http://127.0.0.1:3350/api/health` (public)
+- Other `/api/*` require CSS JWT (`aud`/`client_id` = `machine-sentinel`)
 
 ## Must reuse / must not build
 
