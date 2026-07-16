@@ -26,6 +26,19 @@ powershell -File E:\MyWorkspace\machine-sentinel\scripts\start-ui.ps1
 
 Stop: Ctrl+C in the start shells. Do **not** kill unrelated Cursor shells that may parent protected ingest wrappers (INC-06).
 
+## Session-0 restart persistence (SYSTEM)
+
+To ensure machine-sentinel is restarted after unexpected reboots (or planned OS reboots), register Windows startup tasks that run in **Session 0** as `SYSTEM`.
+
+```powershell
+powershell -File E:\MyWorkspace\machine-sentinel\scripts\register-session0-tasks.ps1
+```
+
+- API task: `MachineSentinelAPI` (runs `run-api-session0.ps1`)
+- UI task: `MachineSentinelUI` (runs `run-ui-session0.ps1`)
+
+These tasks trigger on boot and avoid forcing immediate starts (so they won't duplicate the currently running DEV processes).
+
 ## Soak (DEV 0.1)
 
 See [`SOAK-0.1.md`](./SOAK-0.1.md). Started 2026-07-17 IST. Sample anytime:
